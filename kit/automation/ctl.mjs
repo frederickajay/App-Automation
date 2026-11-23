@@ -78,9 +78,12 @@ async function main() {
       const machine = rest[0] || (process.platform === 'darwin' ? 'mac' : process.platform === 'win32' ? 'windows' : 'cloud');
       const config = loadConfig();
       const repos = [...new Set(loadStages().filter((j) => j.machine === machine).map((j) => j.repo))];
-      const r = checkCredentials(config, machine, repos);
-      console.log(r.ok ? `✓ ${machine}: everything needed is in place` : `✗ ${machine}: fix these:\n - ${r.problems.join('\n - ')}`);
-      process.exitCode = r.ok ? 0 : 1;
+      const base = checkCredentials(config, machine, repos, { forRelease: false });
+      const rel = checkCredentials(config, machine, repos, { forRelease: true });
+      const relOnly = rel.problems.filter((p) => !base.problems.includes(p));
+      console.log(base.ok ? `✓ ${machine}: ready for build, test and screenshot jobs` : `✗ ${machine}: needed before any job runs here:\n - ${base.problems.join('\n - ')}`);
+      console.log(relOnly.length ? `… ${machine}: needed only for the release job:\n - ${relOnly.join('\n - ')}` : `✓ ${machine}: release keys in place`);
+      process.exitCode = base.ok ? 0 : 1;
       return;
     }
     default:

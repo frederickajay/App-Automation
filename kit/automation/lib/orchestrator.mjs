@@ -110,6 +110,11 @@ export class Orchestrator {
     // Local workers report problems running claude itself (credentials, usage limit, crash).
     if (claim?.status === 'error') {
       if (claim.usageLimit) return this.pauseForUsage(job, claim.error);
+      if (claim.missingCredentials) {
+        // Retrying won't help until you add the key, so ask straight away.
+        this.state.setJob(job.id, { status: 'blocked', summary: 'waiting for credentials' });
+        return this.ask(job, st.attempt, [{ question: claim.error, options: ['retry', 'skip'], why: 'Add the missing keys on that machine, restart its worker, then answer "retry".' }]);
+      }
       return this.handleResult(job, st, { status: 'failed', summary: `Worker on ${claim.host}: ${claim.error}` });
     }
     if (claim?.status === 'running' && st.status === 'queued') {

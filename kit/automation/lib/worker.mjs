@@ -19,16 +19,17 @@ export class Worker {
 
   async loop({ once = false } = {}) {
     log(`Worker "${this.machine}" started. Jobs it can take: ${this.stages.map((j) => j.id).join(', ') || 'none'}`);
-    const creds = checkCredentials(this.config, this.machine, [...new Set(this.stages.map((j) => j.repo))]);
-    if (!creds.ok) log('Credential problems (jobs needing them will fail until fixed):\n - ' + creds.problems.join('\n - '));
+    this.repos = [...new Set(this.stages.map((j) => j.repo))];
+    const creds = checkCredentials(this.config, this.machine, this.repos);
+    if (!creds.ok) log('Not ready for every job yet (release jobs need store keys; you get a question when one is reached):\n - ' + creds.problems.join('\n - '));
     for (;;) {
-      try { await this.tick(creds); } catch (e) { log('Worker error:', e.stack || e.message); }
+      try { await this.tick(); } catch (e) { log('Worker error:', e.stack || e.message); }
       if (once) return;
       await sleep((this.config.state.pollSeconds || 60) * 1000);
     }
   }
 
-  async tick(creds) {
+  async tick() {
     this.state.pull();
     if (this.state.control().paused) return;
     const job = this.stages.find((j) => {
@@ -42,8 +43,10 @@ export class Worker {
     this.state.setClaim(job.id, st.attempt, { status: 'running', startedAt: now(), machine: this.machine });
     if (!this.state.commit(`automation: ${this.machine} claims ${job.id}`)) return;
 
+    // Re-check now, for this job only: tests and screenshots don't need store keys, releases do.
+    const creds = checkCredentials(this.config, this.machine, this.repos, { forRelease: /release/.test(job.id) });
     if (!creds.ok) {
-      return this.report(job, st, { status: 'error', error: `Credentials missing on this machine: ${creds.problems.join('; ')}` });
+      return this.report(job, st, { status: 'error', missingCredentials: true, error: `Missing on the ${this.machine}: ${creds.problems.join('; ')}. See automation/SETUP-KEYS.md, then answer "retry".` });
     }
     await this.runJob(job, st);
   }
