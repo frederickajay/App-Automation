@@ -1,0 +1,223 @@
+{
+  "_note": "model = main session model for local (Mac/Windows) jobs. Heavy work runs in .claude/agents with their own fixed models (designer=fable, developer=opus, tester=sonnet...), in cloud and local jobs alike.",
+  "jobs": [
+    {
+      "id": "audit",
+      "title": "Audit repo and resume",
+      "skill": "auto-audit",
+      "machine": "cloud",
+      "model": "opus",
+      "repo": "ios",
+      "dependsOn": [],
+      "goal": false,
+      "alwaysRun": true
+    },
+    {
+      "id": "ideate",
+      "title": "Ideate and write spec with acceptance criteria",
+      "skill": "auto-ideate",
+      "machine": "cloud",
+      "model": "opus",
+      "repo": "ios",
+      "dependsOn": [
+        "audit"
+      ],
+      "goal": true,
+      "done": "automation/spec.md exists, every requirement maps to at least one numbered, testable acceptance criterion (AC-1, AC-2, ...), and the reviewer agent signed off in automation/reviews/spec.md"
+    },
+    {
+      "id": "design",
+      "title": "Design consultancy (Fable)",
+      "skill": "auto-design",
+      "machine": "cloud",
+      "model": "sonnet",
+      "repo": "ios",
+      "dependsOn": [
+        "ideate"
+      ],
+      "goal": true,
+      "done": "automation/design/ has a screen-by-screen design spec covering every acceptance criterion that has a UI, with no open design questions left unrecorded"
+    },
+    {
+      "id": "build-ios",
+      "title": "Build iOS app (Opus)",
+      "skill": "auto-build",
+      "args": "ios",
+      "machine": "cloud",
+      "model": "opus",
+      "repo": "ios",
+      "dependsOn": [
+        "design"
+      ],
+      "goal": true,
+      "done": "every acceptance criterion is implemented or explicitly deferred in automation/decisions.md, the code compiles in CI or the build check is queued for the mac test job, and the reviewer agent found no blocking issues"
+    },
+    {
+      "id": "test-ios",
+      "title": "Unit + UI tests in the iOS simulator until clean",
+      "skill": "auto-test",
+      "args": "ios",
+      "machine": "mac",
+      "model": "sonnet",
+      "repo": "ios",
+      "dependsOn": [
+        "build-ios"
+      ],
+      "goal": true,
+      "done": "xcodebuild test on the configured simulator exits 0 on two consecutive runs, and every acceptance criterion in automation/spec.md is covered by at least one test listed in automation/reviews/test-coverage-ios.md"
+    },
+    {
+      "id": "strings",
+      "title": "Extract platform-neutral source strings",
+      "skill": "auto-strings",
+      "machine": "cloud",
+      "model": "sonnet",
+      "repo": "ios",
+      "dependsOn": [
+        "test-ios"
+      ],
+      "goal": true,
+      "done": "automation/l10n/strings.source.json contains every user-facing string with a comment for translators, and no hard-coded user-facing strings remain in the iOS code"
+    },
+    {
+      "id": "translate",
+      "title": "Translate into all languages (multi-agent)",
+      "skill": "auto-translate",
+      "machine": "cloud",
+      "model": "sonnet",
+      "repo": "ios",
+      "dependsOn": [
+        "strings"
+      ],
+      "goal": true,
+      "done": "node automation/tools/check-strings.mjs exits 0 (every language complete, placeholders intact, lengths within limit) and every language has a back-translation review in automation/reviews/l10n/",
+      "verify": "node automation/tools/check-strings.mjs"
+    },
+    {
+      "id": "screenshots-ios",
+      "title": "iOS App Store screenshots per language",
+      "skill": "auto-screenshots",
+      "args": "ios",
+      "machine": "mac",
+      "model": "sonnet",
+      "repo": "ios",
+      "dependsOn": [
+        "translate"
+      ],
+      "goal": true,
+      "done": "node automation/tools/check-screenshots.mjs ios exits 0",
+      "verify": "node automation/tools/check-screenshots.mjs ios"
+    },
+    {
+      "id": "captions",
+      "title": "Caption screenshots per language",
+      "skill": "auto-captions",
+      "machine": "cloud",
+      "model": "sonnet",
+      "repo": "ios",
+      "dependsOn": [
+        "screenshots-ios"
+      ],
+      "goal": true,
+      "done": "automation/marketing/captions/<lang>.json exists for every language, each caption fits the length limit, and the reviewer agent approved them"
+    },
+    {
+      "id": "blog",
+      "title": "Marketing blog in every language",
+      "skill": "auto-blog",
+      "machine": "cloud",
+      "model": "sonnet",
+      "repo": "ios",
+      "dependsOn": [
+        "captions"
+      ],
+      "goal": true,
+      "done": "automation/marketing/blog/<lang>.md exists for every language, every feature claim maps to an acceptance criterion, every image path exists, and the post is published or a publish question was raised"
+    },
+    {
+      "id": "release-ios",
+      "title": "App Store release",
+      "skill": "auto-release",
+      "args": "ios",
+      "machine": "mac",
+      "model": "sonnet",
+      "repo": "ios",
+      "dependsOn": [
+        "blog"
+      ],
+      "goal": true,
+      "done": "fastlane precheck passes and the build plus localized metadata and screenshots are uploaded to App Store Connect (submitted for review if approvals.storeSubmission is automatic)"
+    },
+    {
+      "id": "build-android",
+      "title": "Build Android app in its own repo",
+      "skill": "auto-build",
+      "args": "android",
+      "machine": "cloud",
+      "model": "opus",
+      "repo": "android",
+      "dependsOn": [
+        "translate"
+      ],
+      "goal": true,
+      "done": "every acceptance criterion is implemented or explicitly deferred, ./gradlew assembleDebug succeeds, and translations are exported to res/values-*/strings.xml"
+    },
+    {
+      "id": "test-android",
+      "title": "Unit + UI tests on the Android emulator until clean",
+      "skill": "auto-test",
+      "args": "android",
+      "machine": "windows",
+      "model": "sonnet",
+      "repo": "android",
+      "dependsOn": [
+        "build-android"
+      ],
+      "goal": true,
+      "done": "./gradlew test connectedAndroidTest exits 0 on two consecutive runs and every acceptance criterion is covered by a test listed in automation/reviews/test-coverage-android.md"
+    },
+    {
+      "id": "screenshots-android",
+      "title": "Google Play screenshots per language",
+      "skill": "auto-screenshots",
+      "args": "android",
+      "machine": "windows",
+      "model": "sonnet",
+      "repo": "android",
+      "dependsOn": [
+        "test-android"
+      ],
+      "goal": true,
+      "done": "node automation/tools/check-screenshots.mjs android exits 0",
+      "verify": "node automation/tools/check-screenshots.mjs android"
+    },
+    {
+      "id": "release-android",
+      "title": "Google Play release",
+      "skill": "auto-release",
+      "args": "android",
+      "machine": "windows",
+      "model": "sonnet",
+      "repo": "android",
+      "dependsOn": [
+        "screenshots-android",
+        "captions"
+      ],
+      "goal": true,
+      "done": "fastlane supply uploaded the bundle, localized listings and screenshots to the configured track"
+    },
+    {
+      "id": "forums",
+      "title": "Forum post drafts (you approve posting)",
+      "skill": "auto-forums",
+      "machine": "cloud",
+      "model": "sonnet",
+      "repo": "ios",
+      "dependsOn": [
+        "release-ios"
+      ],
+      "goal": true,
+      "done": "automation/marketing/forums/<forum>.md exists for every configured forum, each draft follows that forum's rules, and a question asking for posting approval has been raised"
+    }
+  ]
+}

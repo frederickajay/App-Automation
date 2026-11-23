@@ -1,0 +1,48 @@
+# Copy to fastlane/Fastfile in the iOS repo and set SCHEME / PROJECT below.
+# Every credential comes from environment variables (automation/SETUP-KEYS.md). No Apple ID logins, no 2FA.
+default_platform(:ios)
+
+SCHEME  = ENV.fetch("IOS_SCHEME", "MyApp")
+PROJECT = ENV.fetch("IOS_PROJECT", "MyApp.xcodeproj")
+
+platform :ios do
+  def api_key
+    app_store_connect_api_key(
+      key_id: ENV.fetch("ASC_KEY_ID"),
+      issuer_id: ENV.fetch("ASC_ISSUER_ID"),
+      key_filepath: ENV.fetch("ASC_KEY_PATH"),
+      in_house: false
+    )
+  end
+
+  desc "Unit + UI tests on one simulator"
+  lane :tests do |options|
+    run_tests(scheme: SCHEME, devices: [options[:device] || "iPhone 16 Pro Max"],
+              derived_data_path: ".derived-data", result_bundle: true)
+  end
+
+  desc "Localized screenshots, one device at a time (low memory)"
+  lane :screenshots do
+    capture_screenshots(concurrent_simulators: false, erase_simulator: true,
+                        derived_data_path: ".derived-data")   # devices/languages come from Snapfile
+    frame_screenshots(white: true) if Dir.glob("screenshots/*/title.strings").any?
+  end
+
+  desc "Build and upload to App Store Connect with metadata and screenshots"
+  lane :release do |options|
+    key = api_key
+    setup_ci if ENV["CI"]
+    match(type: "appstore", readonly: true, api_key: key)
+    increment_build_number(build_number: latest_testflight_build_number(api_key: key) + 1)
+    build_app(scheme: SCHEME, export_method: "app-store", derived_data_path: ".derived-data")
+    deliver(
+      api_key: key,
+      submit_for_review: options[:submit] == true || ENV["SUBMIT_FOR_REVIEW"] == "1",
+      automatic_release: false,
+      force: true,                       # no HTML preview prompt
+      run_precheck_before_submit: true,
+      precheck_include_in_app_purchases: false,
+      overwrite_screenshots: true
+    )
+  end
+end

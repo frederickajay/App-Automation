@@ -1,0 +1,81 @@
+{
+  "app": {
+    "name": "MyApp",
+    "bundleId": "com.example.myapp",
+    "androidPackage": "com.example.myapp",
+    "sourceLanguage": "en",
+    "languages": ["en", "de", "fr", "es", "it", "pt-BR", "nl", "sv", "pl", "tr", "ru", "ar", "hi", "ja", "ko", "zh-Hans", "zh-Hant", "id"],
+    "storeLocales": {
+      "_note": "App language -> store listing locale folder used by fastlane. Check against App Store Connect / Play Console if you add languages.",
+      "ios": { "en": "en-US", "de": "de-DE", "fr": "fr-FR", "es": "es-ES", "it": "it", "pt-BR": "pt-BR", "nl": "nl-NL", "sv": "sv", "pl": "pl", "tr": "tr", "ru": "ru", "ar": "ar-SA", "hi": "hi", "ja": "ja", "ko": "ko", "zh-Hans": "zh-Hans", "zh-Hant": "zh-Hant", "id": "id" },
+      "android": { "en": "en-US", "de": "de-DE", "fr": "fr-FR", "es": "es-ES", "it": "it-IT", "pt-BR": "pt-BR", "nl": "nl-NL", "sv": "sv-SE", "pl": "pl-PL", "tr": "tr-TR", "ru": "ru-RU", "ar": "ar", "hi": "hi-IN", "ja": "ja-JP", "ko": "ko-KR", "zh-Hans": "zh-CN", "zh-Hant": "zh-TW", "id": "id" }
+    },
+    "requirementsFile": "automation/inputs/requirements.md",
+    "blog": { "publishCommand": "", "baseUrl": "" },
+    "forums": [
+      { "name": "Example forum", "url": "https://example.com", "rulesUrl": "https://example.com/rules" }
+    ]
+  },
+
+  "repos": {
+    "ios": { "path": ".", "remote": "origin", "mainBranch": "main" },
+    "android": { "path": "../MyApp-android", "remote": "origin", "mainBranch": "main" }
+  },
+
+  "machines": {
+    "cloud": {
+      "how": "claude --cloud",
+      "maxParallel": 3
+    },
+    "mac": {
+      "how": "claude -p (local)",
+      "maxParallel": 1,
+      "env": { "CLAUDE_CODE_WORKFLOW_MAX_CONCURRENT_AGENTS": "2" },
+      "beforeJob": ["xcrun simctl shutdown all"],
+      "afterJob": ["xcrun simctl shutdown all"],
+      "cleanDerivedDataAfterJob": true
+    },
+    "windows": {
+      "how": "claude -p (local)",
+      "maxParallel": 1,
+      "env": { "CLAUDE_CODE_WORKFLOW_MAX_CONCURRENT_AGENTS": "4" },
+      "beforeJob": [],
+      "afterJob": []
+    }
+  },
+
+  "claude": {
+    "permissionMode": "auto",
+    "cloudLaunchArgs": ["--cloud"],
+    "goalTurnLimit": 25,
+    "cloudJobTimeoutMinutes": 240,
+    "localJobTimeoutMinutes": 180
+  },
+
+  "state": {
+    "branch": "automation-state",
+    "jobBranchPrefix": "automation/",
+    "pollSeconds": 60
+  },
+
+  "notify": {
+    "ntfyTopicEnv": "NTFY_TOPIC",
+    "webhookEnv": "AUTOMATION_WEBHOOK_URL",
+    "desktop": true
+  },
+
+  "checks": {
+    "maxTranslationLengthRatio": 1.6,
+    "screenshotDevices": {
+      "ios": ["iPhone 16 Pro Max", "iPhone 8 Plus"],
+      "android": ["phone"]
+    },
+    "screenshotsPerDevice": 5
+  },
+
+  "approvals": {
+    "forumPosting": "always-ask",
+    "storeSubmission": "automatic",
+    "spendMoney": "always-ask"
+  }
+}

@@ -1,0 +1,33 @@
+# Copy to fastlane/Fastfile in the Android repo.
+# Signing comes from env vars; read them in app/build.gradle(.kts) signingConfigs, e.g.
+#   storeFile = file(System.getenv("ANDROID_KEYSTORE_PATH")); storePassword = System.getenv("ANDROID_KEYSTORE_PASSWORD")
+#   keyAlias = System.getenv("ANDROID_KEY_ALIAS"); keyPassword = System.getenv("ANDROID_KEY_PASSWORD")
+# Note: Google requires the FIRST upload of a new app to be done by hand in Play Console.
+default_platform(:android)
+
+platform :android do
+  desc "Unit + instrumented tests (one emulator must be running)"
+  lane :tests do
+    gradle(task: "testDebugUnitTest")
+    gradle(task: "connectedDebugAndroidTest")
+  end
+
+  desc "Localized screenshots (locales come from Screengrabfile)"
+  lane :screenshots do
+    gradle(task: "assembleDebug assembleAndroidTest")
+    capture_android_screenshots
+  end
+
+  desc "Build signed bundle and upload with listings and screenshots"
+  lane :release do |options|
+    gradle(task: "bundle", build_type: "Release")
+    upload_to_play_store(
+      json_key: ENV.fetch("PLAY_JSON_KEY"),
+      track: options[:track] || ENV.fetch("PLAY_TRACK", "internal"),
+      release_status: ENV.fetch("PLAY_RELEASE_STATUS", "draft"),
+      skip_upload_metadata: false,
+      skip_upload_images: false,
+      skip_upload_screenshots: false
+    )
+  end
+end
