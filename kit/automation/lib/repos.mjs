@@ -5,7 +5,7 @@ import path from 'node:path';
 import { HOME_REPO, git, repoPath, runShell, log, now } from './util.mjs';
 
 const SHARED_PATHS = [
-  'automation/spec.md', 'automation/design', 'automation/l10n', 'automation/decisions.md',
+  'automation/config.json', 'automation/spec.md', 'automation/design', 'automation/l10n', 'automation/decisions.md',
   'automation/handoffs', 'automation/reviews', 'automation/marketing/captions', 'automation/inputs',
 ];
 
